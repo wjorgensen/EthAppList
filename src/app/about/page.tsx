@@ -4,6 +4,7 @@ import Layout from "@/components/layout/Layout";
 import { Separator } from "@/components/ui/separator";
 
 export default function AboutPage() {
+  // TODO: Make this page more fun
   return (
     <Layout>
       <div className="container max-w-5xl mx-auto px-4 py-12">
