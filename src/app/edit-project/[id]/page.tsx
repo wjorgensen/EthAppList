@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,7 @@ export default function EditProjectPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+
   const [project, setProject] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,30 +53,7 @@ export default function EditProjectPage() {
     chains: [] as string[],
   });
 
-  // Load project data and categories
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push('/');
-      return;
-    }
-
-    loadProject();
-    loadCategories();
-
-    const checkPermissions = async () => {
-      try {
-        const permissions = await getUserPermissions();
-        setHasPermission(permissions.canEdit || permissions.isAdmin || permissions.isCurator);
-      } catch (error) {
-        console.error('Error checking permissions:', error);
-        setHasPermission(false);
-      }
-    };
-
-    checkPermissions();
-  }, [params?.id, router]);
-
-  const loadProject = async () => {
+  const loadProject = useCallback(async () => {
     try {
       setIsLoading(true);
       if (!params?.id) return;
@@ -112,16 +90,39 @@ export default function EditProjectPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [params?.id, router, toast, setIsLoading, setProject, setFormData]);
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       const categoriesData = await getCategories();
       setCategories(categoriesData);
     } catch (error) {
       console.error('Failed to load categories:', error);
     }
-  };
+  }, [setCategories]);
+
+  // Load project data and categories
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push('/');
+      return;
+    }
+
+    loadProject();
+    loadCategories();
+
+    const checkPermissions = async () => {
+      try {
+        const permissions = await getUserPermissions();
+        setHasPermission(permissions.canEdit || permissions.isAdmin || permissions.isCurator);
+      } catch (error) {
+        console.error('Error checking permissions:', error);
+        setHasPermission(false);
+      }
+    };
+
+    checkPermissions();
+  }, [params?.id, router, loadProject, loadCategories]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -210,7 +211,7 @@ export default function EditProjectPage() {
           <Card className="p-8 text-center">
             <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
             <p className="text-muted-foreground">
-              You don't have permission to edit projects. Please contact an administrator.
+              You don&apos;t have permission to edit projects. Please contact an administrator.
             </p>
           </Card>
         </div>
@@ -241,7 +242,7 @@ export default function EditProjectPage() {
         <div className="container max-w-4xl mx-auto px-4 py-12 text-center">
           <h1 className="text-2xl font-bold mb-4">Project Not Found</h1>
           <p className="text-gray-600 dark:text-gray-400 mb-8">
-            The project you're looking for doesn't exist or you don't have permission to edit it.
+            The project you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to edit it.
           </p>
           <Link href="/">
             <Button>

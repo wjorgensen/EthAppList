@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,21 +38,7 @@ export default function CuratorDashboard() {
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    setMounted(true);
-    
-    // Check authentication and curator permissions
-    if (!isAuthenticated()) {
-      router.push('/');
-      return;
-    }
-
-    // Load pending edits from API
-    loadPendingEdits();
-    loadRecentEdits();
-  }, [router]);
-
-  const loadPendingEdits = async () => {
+  const loadPendingEdits = useCallback(async () => {
     try {
       setLoading(true);
       const edits = await getPendingEdits();
@@ -68,16 +54,30 @@ export default function CuratorDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
-  const loadRecentEdits = async () => {
+  const loadRecentEdits = useCallback(async () => {
     try {
       const edits = await getRecentEdits({ limit: 10 });
       setRecentEdits(edits);
     } catch (error) {
       console.error('Error loading recent edits:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
+    
+    // Check authentication and curator permissions
+    if (!isAuthenticated()) {
+      router.push('/');
+      return;
+    }
+
+    // Load pending edits from API
+    loadPendingEdits();
+    loadRecentEdits();
+  }, [router, loadPendingEdits, loadRecentEdits]);
 
   // Filter edits based on current filters
   useEffect(() => {
@@ -363,7 +363,7 @@ export default function CuratorDashboard() {
                   Approved projects will appear here.
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  This section will show all projects you've approved.
+                  This section will show all projects you&apos;ve approved.
                 </p>
               </CardContent>
             </Card>

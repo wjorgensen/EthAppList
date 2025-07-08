@@ -159,7 +159,7 @@ export default function AddProject() {
           <Card className="p-8 text-center">
             <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
             <p className="text-muted-foreground">
-              You don't have permission to add projects. Please contact an administrator.
+              You don&apos;t have permission to add projects. Please contact an administrator.
             </p>
           </Card>
         </div>

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 import { getProducts, getCategories, Product, Category } from "@/lib/api";
+import Image from "next/image";
 
 interface SearchResult {
   id: string;
@@ -217,9 +218,11 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                   <div className="flex items-center">
                     {result.type === "app" && result.logo && (
                       <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-md mr-3 flex-shrink-0 overflow-hidden">
-                        <img 
-                          src={result.logo} 
+                        <Image 
+                          src={result.logo}
                           alt={`${result.name} logo`}
+                          width={40}
+                          height={40}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -248,7 +251,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             </ul>
           ) : query.length > 0 ? (
             <div className="py-8 text-center">
-              <p className="text-gray-500 dark:text-gray-400">No results found for "{query}"</p>
+              <p className="text-gray-500 dark:text-gray-400">No results found for &quot;{query}&quot;</p>
             </div>
           ) : (
             <div className="py-8 text-center">

@@ -112,7 +112,7 @@ export default function AuthButton({ onAuthChange }: AuthButtonProps) {
       
       return () => clearTimeout(timer);
     }
-  }, [mounted, isConnected, authenticated, isAuthenticating, address]);
+  }, [mounted, isConnected, authenticated, isAuthenticating, address, handleAuthenticate]);
 
   // Handle disconnect
   const handleDisconnect = useCallback(() => {

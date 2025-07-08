@@ -53,7 +53,7 @@ export default function NotFound() {
             Lost in the mempool
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-            The page you're looking for doesn't exist or has been moved.
+            The page you&apos;re looking for doesn&apos;t exist or has been moved.
           </p>
           <Link href="/">
             <Button className="bg-[#60C5FF] hover:bg-[#60C5FF]/90 text-white">
