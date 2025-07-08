@@ -3,6 +3,7 @@
 import Image from "next/image";
 
 export default function AboutPage() {
+  // TODO: Make this page more fun
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow">
