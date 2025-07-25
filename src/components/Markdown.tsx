@@ -11,7 +11,6 @@ export default function Markdown({ content }: Props) {
   return (
     <article className="prose prose-slate max-w-none dark:prose-invert">
       <ReactMarkdown
-        children={content}
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[
           rehypeRaw,           // remove if you *never* allow raw HTML
@@ -23,7 +22,9 @@ export default function Markdown({ content }: Props) {
             <a {...props} className="text-blue-500 hover:underline" />
           ),
         }}
-      />
+      >
+        {content}
+      </ReactMarkdown>
     </article>
   );
 } 
