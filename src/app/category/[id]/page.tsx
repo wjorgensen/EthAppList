@@ -2,9 +2,10 @@
 
 import { use, useEffect, useState } from "react";
 import Layout from "@/components/layout/Layout";
-import ProjectCard from "@/components/project/ProjectCard";
+import AppCard from "@/components/app/AppCard";
 import { Button } from "@/components/ui/button";
-import { getProducts, getCategories, Product, Category } from "@/lib/api";
+import { getProducts, getCategories, Category, Product, getUserVoteStates } from "@/lib/api";
+import { isAuthenticated } from "@/lib/auth";
 
 interface CategoryPageProps {
   params: Promise<{
@@ -18,20 +19,24 @@ export default function CategoryPage({ params }: CategoryPageProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [sortBy, setSortBy] = useState<"upvotes" | "newest">("upvotes");
   const [isLoading, setIsLoading] = useState(true);
+  const [voteStates, setVoteStates] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchCategoryData = async () => {
+      if (!id) return;
       try {
         setIsLoading(true);
+        
+        const decodedId = decodeURIComponent(id as string);
         
         // Fetch categories and products in parallel
         const [categoriesResponse, productsResponse] = await Promise.all([
           getCategories(),
-          getProducts({ category: id, per_page: 50 })
+          getProducts({ category: decodedId, per_page: 50 })
         ]);
         
-        // Find the specific category
-        const foundCategory = categoriesResponse.find((cat: Category) => cat.id === id) || null;
+        // Find the specific category by name (case-insensitive)
+        const foundCategory = categoriesResponse.find((cat: Category) => cat.name.toLowerCase() === decodedId.toLowerCase()) || null;
         setCategory(foundCategory);
         
         // Set and sort products
@@ -43,6 +48,17 @@ export default function CategoryPage({ params }: CategoryPageProps) {
         }
         
         setProducts(sortedProducts);
+        
+        // Load vote states if authenticated and we have products
+        if (isAuthenticated() && sortedProducts.length > 0) {
+          try {
+            const productIds = sortedProducts.map(p => p.id);
+            const voteStatesData = await getUserVoteStates(productIds);
+            setVoteStates(voteStatesData);
+          } catch (error) {
+            console.error("Error loading vote states:", error);
+          }
+        }
       } catch (error) {
         console.error("Error fetching category data:", error);
       } finally {
@@ -118,9 +134,10 @@ export default function CategoryPage({ params }: CategoryPageProps) {
         {products.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {products.map((product) => (
-              <ProjectCard 
+              <AppCard 
                 key={product.id} 
                 product={product}
+                initialVoteState={voteStates[product.id]}
                 onUpvote={(productId) => {
                   // Update the local state to reflect the upvote
                   setProducts(prev => prev.map(p => 
@@ -128,6 +145,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                       ? { ...p, upvote_count: p.upvote_count + 1 }
                       : p
                   ));
+                  setVoteStates(prev => ({ ...prev, [productId]: true }));
                 }}
               />
             ))}

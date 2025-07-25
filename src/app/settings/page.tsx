@@ -1,18 +1,13 @@
 "use client";
 
 import { useAccount } from 'wagmi';
-import { useTheme } from '@/lib/theme';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { 
   Wallet, 
-  Moon, 
-  Sun, 
-  Monitor, 
   Shield, 
   ExternalLink,
   Check,
@@ -24,7 +19,6 @@ import { useState, useEffect } from 'react';
 
 export default function SettingsPage() {
   const { address, isConnected } = useAccount();
-  const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [authenticated, setAuthenticated] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -121,71 +115,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Theme Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {theme === 'dark' ? (
-                  <Moon className="w-5 h-5" />
-                ) : theme === 'light' ? (
-                  <Sun className="w-5 h-5" />
-                ) : (
-                  <Monitor className="w-5 h-5" />
-                )}
-                Appearance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium mb-3 block">Theme</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  <Button
-                    variant={theme === 'light' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setTheme('light')}
-                    className="flex items-center gap-2"
-                  >
-                    <Sun className="w-4 h-4" />
-                    Light
-                  </Button>
-                  <Button
-                    variant={theme === 'dark' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setTheme('dark')}
-                    className="flex items-center gap-2"
-                  >
-                    <Moon className="w-4 h-4" />
-                    Dark
-                  </Button>
-                  <Button
-                    variant={theme === 'system' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setTheme('system')}
-                    className="flex items-center gap-2"
-                  >
-                    <Monitor className="w-4 h-4" />
-                    System
-                  </Button>
-                </div>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="dark-mode-toggle" className="text-sm font-medium">
-                    Dark Mode
-                  </Label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Toggle between light and dark themes
-                  </p>
-                </div>
-                <Switch
-                  id="dark-mode-toggle"
-                  checked={theme === 'dark'}
-                  onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-                />
-              </div>
-            </CardContent>
-          </Card>
+
 
           {/* Future Features */}
           <Card>

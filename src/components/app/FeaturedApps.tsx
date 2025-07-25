@@ -6,51 +6,55 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight, ChevronLeft, ChevronUp } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { getProducts, Product } from "@/lib/api";
+import { getProducts, Product, getTrendingProducts } from "@/lib/api";
+import { useRouter } from "next/navigation";
 
-export default function FeaturedProjects() {
+export default function FeaturedApps() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
-  const [featuredProjects, setFeaturedProjects] = useState<Product[]>([]);
+  const [featuredApps, setFeaturedApps] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const sliderRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
-  // Fetch featured projects on component mount
+  // Fetch featured apps on component mount
   useEffect(() => {
-    const fetchFeaturedProjects = async () => {
+    const fetchFeaturedApps = async () => {
       try {
         setIsLoading(true);
-        // Get top projects for the week
-        const response = await getProducts({ sort: 'top_week', per_page: 5 });
-        setFeaturedProjects(response.products);
+        // Get top trending apps for featured section
+        const trendingData = await getTrendingProducts(5);
+        console.log('Featured apps response:', trendingData);
+        console.log('First app structure:', trendingData?.[0]);
+        setFeaturedApps(trendingData);
       } catch (error) {
-        console.error("Error fetching featured projects:", error);
+        console.error("Error fetching featured apps:", error);
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchFeaturedProjects();
+    fetchFeaturedApps();
   }, []);
 
   // Auto-advance the slider if not hovering
   useEffect(() => {
-    if (isHovering || featuredProjects.length === 0) return;
+    if (isHovering || featuredApps.length === 0) return;
 
     const interval = setInterval(() => {
-      setActiveIndex((prev) => (prev === featuredProjects.length - 1 ? 0 : prev + 1));
+      setActiveIndex((prev) => (prev === featuredApps.length - 1 ? 0 : prev + 1));
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [isHovering, featuredProjects.length]);
+  }, [isHovering, featuredApps.length]);
 
   // Slider navigation
   const handlePrev = () => {
-    setActiveIndex((prev) => (prev === 0 ? featuredProjects.length - 1 : prev - 1));
+    setActiveIndex((prev) => (prev === 0 ? featuredApps.length - 1 : prev - 1));
   };
 
   const handleNext = () => {
-    setActiveIndex((prev) => (prev === featuredProjects.length - 1 ? 0 : prev + 1));
+    setActiveIndex((prev) => (prev === featuredApps.length - 1 ? 0 : prev + 1));
   };
 
   if (isLoading) {
@@ -58,13 +62,13 @@ export default function FeaturedProjects() {
       <div className="container max-w-7xl mx-auto px-4 py-8">
         <h2 className="text-2xl font-semibold font-manrope mb-6">Featured Apps</h2>
         <div className="h-60 flex items-center justify-center">
-          <div className="animate-pulse text-gray-400">Loading featured projects...</div>
+          <div className="animate-pulse text-gray-400">Loading featured apps...</div>
         </div>
       </div>
     );
   }
 
-  if (featuredProjects.length === 0) {
+  if (featuredApps.length === 0) {
     return null;
   }
 
@@ -83,7 +87,7 @@ export default function FeaturedProjects() {
               size="icon" 
               className="rounded-full" 
               onClick={handlePrev}
-              aria-label="Previous project"
+              aria-label="Previous app"
             >
               <ChevronLeft className="w-5 h-5" />
             </Button>
@@ -92,7 +96,7 @@ export default function FeaturedProjects() {
               size="icon" 
               className="rounded-full" 
               onClick={handleNext}
-              aria-label="Next project"
+              aria-label="Next app"
             >
               <ChevronRight className="w-5 h-5" />
             </Button>
@@ -104,16 +108,16 @@ export default function FeaturedProjects() {
           className="relative flex transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${activeIndex * 100}%)` }}
         >
-          {featuredProjects.map((project: Product) => (
-            <div key={project.id} className="w-full flex-shrink-0 px-2">
-              <Link href={`/project/${project.id}`}>
+          {featuredApps.map((app: Product) => (
+            <div key={app.id} className="w-full flex-shrink-0 px-2">
+              <Link href={`/app/${app.id}`}>
                 <Card className="cursor-pointer hover:shadow-md transition-shadow duration-200 overflow-hidden h-full">
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row md:items-center gap-6">
                       <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200 dark:border-gray-800">
                         <Image
-                          src={project.logo_url}
-                          alt={`${project.title} logo`}
+                          src={app.logo_url}
+                          alt={`${app.title} logo`}
                           fill
                           className="object-cover"
                         />
@@ -122,9 +126,9 @@ export default function FeaturedProjects() {
                       <div className="flex-grow">
                         <div className="flex items-center mb-2">
                           <h3 className="font-semibold text-xl font-manrope">
-                            {project.title}
+                            {app.title}
                           </h3>
-                          {project.is_verified && (
+                          {app.is_verified && (
                             <span className="ml-2 inline-flex bg-gray-200 text-black text-xs px-2 py-1 rounded-full dark:bg-gray-800 dark:text-white">
                               Verified
                             </span>
@@ -132,16 +136,16 @@ export default function FeaturedProjects() {
                         </div>
 
                         <p className="text-gray-600 dark:text-gray-400 mb-4">
-                          {project.short_desc}
+                          {app.short_desc}
                         </p>
 
                         <div className="flex flex-wrap gap-2">
-                          {project.categories.map((category) => (
+                          {app.categories?.map((category) => (
                             <span key={category.id} className="inline-flex text-xs px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                               {category.name}
                             </span>
                           ))}
-                          {project.chains.map((chain) => (
+                          {app.chains?.map((chain) => (
                             <span key={chain.id} className="inline-flex text-xs px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                               {chain.name}
                             </span>
@@ -157,21 +161,20 @@ export default function FeaturedProjects() {
                           onClick={(e) => e.preventDefault()}
                         >
                           <ChevronUp className="w-5 h-5" />
-                          <span className="text-xs font-medium">{project.upvote_count}</span>
+                          <span className="text-xs font-medium">{app.upvote_count}</span>
                         </Button>
-                        <Link 
-                          href={`/project/${project.id}`} 
-                          onClick={e => e.stopPropagation()}
-                          className="mt-3"
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-3 bg-black text-white border-black hover:bg-gray-800"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            router.push(`/app/${app.id}`);
+                          }}
                         >
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="bg-black text-white border-black hover:bg-gray-800"
-                          >
-                            View Details
-                          </Button>
-                        </Link>
+                          View Details
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -182,7 +185,7 @@ export default function FeaturedProjects() {
         </div>
 
         <div className="flex justify-center mt-4 space-x-2">
-          {featuredProjects.map((_, index: number) => (
+          {featuredApps.map((_, index: number) => (
             <button
               key={index}
               className={`w-2 h-2 rounded-full transition-colors ${

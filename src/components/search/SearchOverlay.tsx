@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
@@ -13,6 +13,7 @@ interface SearchResult {
   description: string;
   type: "app" | "category";
   logo?: string;
+  matchContext?: ReactNode;
 }
 
 interface SearchOverlayProps {
@@ -99,37 +100,100 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
       return;
     }
 
+    const createHighlight = (text: string, query: string): ReactNode | null => {
+      const index = text.toLowerCase().indexOf(query.toLowerCase());
+      if (index === -1) return null;
+
+      const CONTEXT_WINDOW = 50;
+      const startIndex = Math.max(0, index - CONTEXT_WINDOW);
+      const endIndex = Math.min(
+        text.length,
+        index + query.length + CONTEXT_WINDOW
+      );
+
+      const snippet = `...${text.substring(startIndex, endIndex)}...`;
+
+      const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+      const parts = snippet.split(new RegExp(`(${escapedQuery})`, "gi"));
+
+      return (
+        <p className="text-xs text-muted-foreground mt-1 italic">
+          {parts.map((part, i) =>
+            part.toLowerCase() === query.toLowerCase() ? (
+              <span
+                key={i}
+                className="bg-primary/20 text-primary-foreground font-semibold not-italic rounded px-1"
+              >
+                {part}
+              </span>
+            ) : (
+              part
+            )
+          )}
+        </p>
+      );
+    };
+
     const searchResults: SearchResult[] = [];
+    const queryLower = query.toLowerCase();
 
     // Search products
     if (activeFilter === "all" || activeFilter === "apps") {
-      const matchingProducts = allProducts.filter(product => 
-        product.title.toLowerCase().includes(query.toLowerCase()) || 
-        product.short_desc.toLowerCase().includes(query.toLowerCase())
+      const matchingProducts = allProducts.reduce(
+        (acc: SearchResult[], product) => {
+          const titleMatch = product.title.toLowerCase().includes(queryLower);
+          const shortDescMatch = product.short_desc
+            .toLowerCase()
+            .includes(queryLower);
+          const longDescMatch = product.long_desc
+            .toLowerCase()
+            .includes(queryLower);
+          const markdownMatch = product.markdown_content
+            .toLowerCase()
+            .includes(queryLower);
+
+          if (titleMatch || shortDescMatch || longDescMatch || markdownMatch) {
+            let matchContext: ReactNode | null = null;
+
+            if (longDescMatch) {
+              matchContext = createHighlight(product.long_desc, query);
+            } else if (markdownMatch) {
+              matchContext = createHighlight(product.markdown_content, query);
+            }
+
+            acc.push({
+              id: product.id,
+              name: product.title,
+              description: product.short_desc,
+              type: "app" as const,
+              logo: product.logo_url,
+              matchContext: matchContext,
+            });
+          }
+          return acc;
+        },
+        []
       );
-      
-      searchResults.push(...matchingProducts.map(product => ({
-        id: product.id,
-        name: product.title,
-        description: product.short_desc,
-        type: "app" as const,
-        logo: product.logo_url
-      })));
+
+      searchResults.push(...matchingProducts);
     }
 
     // Search categories
     if (activeFilter === "all" || activeFilter === "categories") {
-      const matchingCategories = allCategories.filter(category =>
-        category.name.toLowerCase().includes(query.toLowerCase()) ||
-        category.description.toLowerCase().includes(query.toLowerCase())
+      const matchingCategories = allCategories.filter(
+        (category) =>
+          category.name.toLowerCase().includes(queryLower) ||
+          category.description.toLowerCase().includes(queryLower)
       );
 
-      searchResults.push(...matchingCategories.map(category => ({
-        id: category.id,
-        name: category.name,
-        description: category.description,
-        type: "category" as const
-      })));
+      searchResults.push(
+        ...matchingCategories.map((category) => ({
+          id: category.id,
+          name: category.name,
+          description: category.description,
+          type: "category" as const,
+        }))
+      );
     }
 
     setResults(searchResults);
@@ -139,16 +203,13 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/30 backdrop-blur-sm">
-      <div 
-        className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-lg shadow-xl overflow-hidden"
-        style={{ animation: "slideDown 0.2s ease-out" }}
-      >
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center">
-          <Search className="w-5 h-5 mr-2 text-gray-400" />
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-background/30 backdrop-blur-sm">
+      <div className="w-full max-w-2xl bg-card border text-card-foreground rounded-lg shadow-lg overflow-hidden animate-in fade-in duration-200 slide-in-from-top-4">
+        <div className="p-4 border-b flex items-center">
+          <Search className="w-5 h-5 mr-3 text-muted-foreground" />
           <Input
             ref={searchInputRef}
-            className="flex-grow border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-lg"
+            className="flex-grow bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-lg placeholder:text-muted-foreground"
             placeholder="Search apps and categories..."
             value={query}
             onChange={e => setQuery(e.target.value)}
@@ -164,12 +225,11 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
           </Button>
         </div>
 
-        <div className="p-2 border-b border-gray-200 dark:border-gray-800 flex space-x-2">
+        <div className="p-2 border-b flex space-x-2">
           <Button
             variant={activeFilter === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveFilter("all")}
-            className={activeFilter === "all" ? "bg-[#60C5FF] hover:bg-[#60C5FF]/90" : ""}
           >
             All
           </Button>
@@ -177,7 +237,6 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             variant={activeFilter === "apps" ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveFilter("apps")}
-            className={activeFilter === "apps" ? "bg-[#60C5FF] hover:bg-[#60C5FF]/90" : ""}
           >
             Apps
           </Button>
@@ -185,7 +244,6 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             variant={activeFilter === "categories" ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveFilter("categories")}
-            className={activeFilter === "categories" ? "bg-[#60C5FF] hover:bg-[#60C5FF]/90" : ""}
           >
             Categories
           </Button>
@@ -194,21 +252,21 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
         <div className="max-h-[60vh] overflow-y-auto p-2">
           {isLoading ? (
             <div className="py-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#60C5FF] mx-auto"></div>
-              <p className="text-gray-500 mt-2">Loading...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-2">Loading...</p>
             </div>
           ) : results.length > 0 ? (
-            <ul className="divide-y divide-gray-200 dark:divide-gray-800">
+            <ul className="divide-y">
               {results.map((result, index) => (
                 <li
                   key={result.id}
-                  className={`p-3 cursor-pointer ${
-                    selectedIndex === index ? "bg-[#60C5FF]/10" : ""
+                  className={`p-3 cursor-pointer rounded-md ${
+                    selectedIndex === index ? "bg-accent text-accent-foreground" : ""
                   }`}
                   onMouseEnter={() => setSelectedIndex(index)}
                   onClick={() => {
                     if (result.type === "app") {
-                      window.location.href = `/project/${result.id}`;
+                      window.location.href = `/app/${result.id}`;
                     } else {
                       window.location.href = `/category/${result.id}`;
                     }
@@ -217,7 +275,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 >
                   <div className="flex items-center">
                     {result.type === "app" && result.logo && (
-                      <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-md mr-3 flex-shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 bg-muted rounded-md mr-3 flex-shrink-0 overflow-hidden">
                         <Image 
                           src={result.logo}
                           alt={`${result.name} logo`}
@@ -228,7 +286,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                       </div>
                     )}
                     {result.type === "category" && (
-                      <div className="w-10 h-10 bg-[#60C5FF]/10 text-[#60C5FF] rounded-md mr-3 flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-primary/10 text-primary rounded-md mr-3 flex items-center justify-center flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
                         </svg>
@@ -237,13 +295,14 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                     <div className="flex-grow min-w-0">
                       <div className="flex items-center justify-between">
                         <h3 className="font-medium truncate">{result.name}</h3>
-                        <span className="ml-2 text-xs px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                        <span className="ml-2 text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
                           {result.type === "app" ? "App" : "Category"}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      <p className="text-sm text-muted-foreground truncate">
                         {result.description}
                       </p>
+                      {result.matchContext}
                     </div>
                   </div>
                 </li>
@@ -251,17 +310,17 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             </ul>
           ) : query.length > 0 ? (
             <div className="py-8 text-center">
-              <p className="text-gray-500 dark:text-gray-400">No results found for &quot;{query}&quot;</p>
+              <p className="text-muted-foreground">No results found for &quot;{query}&quot;</p>
             </div>
           ) : (
             <div className="py-8 text-center">
-              <p className="text-gray-500 dark:text-gray-400">Start typing to search apps and categories...</p>
+              <p className="text-muted-foreground">Start typing to search apps and categories...</p>
             </div>
           )}
         </div>
 
-        <div className="p-3 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
-          Press <kbd className="px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-800">↑</kbd> <kbd className="px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-800">↓</kbd> to navigate, <kbd className="px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-800">Enter</kbd> to select, <kbd className="px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-800">Esc</kbd> to dismiss
+        <div className="p-3 border-t text-xs text-muted-foreground">
+          Press <kbd className="px-1.5 py-1 rounded-md bg-muted font-mono">↑</kbd> <kbd className="px-1.5 py-1 rounded-md bg-muted font-mono">↓</kbd> to navigate, <kbd className="px-1.5 py-1 rounded-md bg-muted font-mono">Enter</kbd> to select, <kbd className="px-1.5 py-1 rounded-md bg-muted font-mono">Esc</kbd> to dismiss
         </div>
       </div>
 
@@ -271,19 +330,6 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
         onClick={onClose}
         aria-hidden="true"
       />
-
-      <style jsx global>{`
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 } 

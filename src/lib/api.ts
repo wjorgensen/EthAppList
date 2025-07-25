@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getAuthToken } from './auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-production-29b8.up.railway.app/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Create a configured axios instance
 const api = axios.create({
@@ -44,21 +44,32 @@ export interface Product {
   short_desc: string;
   long_desc: string;
   logo_url: string;
+  website_url?: string;
+  github_url?: string;
+  docs_url?: string;
+  audit_reports?: string[];
   markdown_content: string;
   submitter_id: string;
   approved: boolean;
   is_verified: boolean;
   analytics_list: string[];
+  overall_score: number;
   security_score: number;
   ux_score: number;
-  decent_score: number;
   vibes_score: number;
+  current_revision_number: number;
+  last_editor_id?: string;
   created_at: string;
   updated_at: string;
   categories: Category[];
   chains: Chain[];
   upvote_count: number;
-  submitter: {
+  trending_score?: number;
+  submitter?: {
+    id: string;
+    wallet_address: string;
+  };
+  last_editor?: {
     id: string;
     wallet_address: string;
   };
@@ -134,9 +145,9 @@ export const submitProduct = async (productData: {
   markdown_content: string;
   is_verified?: boolean;
   analytics_list?: string[];
+  overall_score?: number;
   security_score?: number;
   ux_score?: number;
-  decent_score?: number;
   vibes_score?: number;
   categories: { id: string }[];
   chains: { id: string }[];
@@ -153,7 +164,32 @@ export const upvoteProduct = async (id: string) => {
 };
 
 /**
- * Update an existing product
+ * Get trending products
+ */
+export const getTrendingProducts = async (limit: number = 20) => {
+  const response = await api.get<Product[]>(`/products/trending?limit=${limit}`);
+  return response.data;
+};
+
+/**
+ * Get random products
+ */
+export const getRandomProducts = async (limit: number = 5) => {
+  const response = await api.get<ProductsResponse>(`/products/random?per_page=${limit}`);
+  return response.data;
+};
+
+/**
+ * Get user vote states for multiple products
+ */
+export const getUserVoteStates = async (productIds: string[]) => {
+  const ids = productIds.join(',');
+  const response = await api.get<Record<string, boolean>>(`/user/vote-states?ids=${ids}`);
+  return response.data;
+};
+
+/**
+ * Update an existing product (direct update - for admin use)
  */
 export const updateProduct = async (id: string, productData: {
   product: {
@@ -164,9 +200,9 @@ export const updateProduct = async (id: string, productData: {
     markdown_content: string;
     is_verified?: boolean;
     analytics_list?: string[];
+    overall_score?: number;
     security_score?: number;
     ux_score?: number;
-    decent_score?: number;
     vibes_score?: number;
     categories: { id: string }[];
     chains: { id: string }[];
@@ -175,6 +211,32 @@ export const updateProduct = async (id: string, productData: {
   minor_edit?: boolean;
 }) => {
   await api.put(`/products/${id}`, productData);
+};
+
+/**
+ * Submit a product edit revision (goes to approval queue)
+ */
+export const submitProductEdit = async (id: string, productData: {
+  product: {
+    title: string;
+    short_desc: string;
+    long_desc: string;
+    logo_url: string;
+    markdown_content: string;
+    is_verified?: boolean;
+    analytics_list?: string[];
+    overall_score?: number;
+    security_score?: number;
+    ux_score?: number;
+    vibes_score?: number;
+    categories: { id: string }[];
+    chains: { id: string }[];
+  };
+  edit_summary: string;
+  minor_edit?: boolean;
+}) => {
+  const response = await api.post(`/products/${id}/edit`, productData);
+  return response.data;
 };
 
 /**
@@ -212,6 +274,44 @@ export const submitCategory = async (categoryData: {
 // Admin API
 
 /**
+ * Get all pending changes from Redis
+ */
+export const getPendingChanges = async () => {
+  const response = await api.get('/admin/pending-changes');
+  return response.data;
+};
+
+/**
+ * Get specific pending product by ID
+ */
+export const getPendingProduct = async (id: string) => {
+  const response = await api.get(`/admin/pending-products/${id}`);
+  return response.data;
+};
+
+/**
+ * Get specific pending edit by ID
+ */
+export const getPendingEdit = async (id: string) => {
+  const response = await api.get(`/admin/pending-edits/${id}`);
+  return response.data;
+};
+
+/**
+ * Approve pending change and merge to main database
+ */
+export const approvePendingChange = async (id: string) => {
+  await api.post(`/admin/approve/${id}`);
+};
+
+/**
+ * Reject pending change and remove from Redis
+ */
+export const rejectPendingChange = async (id: string) => {
+  await api.post(`/admin/reject/${id}`);
+};
+
+/**
  * Get a list of pending edits
  */
 export const getPendingEdits = async () => {
@@ -244,6 +344,14 @@ export const getRecentEdits = async (params?: {
 };
 
 /**
+ * Get pending edits and creations for a specific product
+ */
+export const getProductPendingEdits = async (productId: string) => {
+  const response = await api.get(`/admin/products/${productId}`);
+  return response.data;
+};
+
+/**
  * Get user profile and permissions
  */
 export const getUserProfile = async () => {
@@ -252,12 +360,51 @@ export const getUserProfile = async () => {
 };
 
 /**
- * Check if user has curator/admin permissions
+ * Check if user has admin permissions
+ * For now, any authenticated user can edit (subject to approval queue)
+ * Only admin status needs to be checked via API
  */
 export const getUserPermissions = async () => {
-  const response = await api.get('/user/permissions');
-  return response.data;
+  try {
+    // Try to get admin status from API - you can implement this endpoint later
+    const response = await api.get('/user/profile');
+    return {
+      canAdd: true,     // Anyone authenticated can submit projects (pending approval)
+      canEdit: true,    // Anyone authenticated can submit edits (pending approval)
+      isAdmin: response.data?.is_admin || false,   // Check admin status if available
+      isCurator: false  // Not used in your system
+    };
+  } catch (error) {
+    // If no profile endpoint, assume authenticated user can edit but isn't admin
+    console.warn('User profile endpoint not available, using authenticated user permissions');
+    
+    return {
+      canAdd: true,     // Anyone authenticated can submit projects (pending approval)
+      canEdit: true,    // Anyone authenticated can submit edits (pending approval)
+      isAdmin: false,   // Can't determine admin status without API
+      isCurator: false  // Not used in your system
+    };
+  }
 };
+
+// Score submission helper
+export async function postScores(productId: string, scores: {
+  overall: number;
+  security: number;
+  ux: number;
+  vibes: number;
+}) {
+  const response = await api.post(`/products/${productId}/scores`, scores);
+  return response.data;
+}
+
+/**
+ * Check if the current user has submitted a score for a specific product
+ */
+export async function getUserScore(productId: string) {
+  const response = await api.get(`/products/${productId}/my-score`);
+  return response.data;
+}
 
 export default api;
 

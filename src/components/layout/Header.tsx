@@ -8,16 +8,35 @@ import { Search, Settings, Shield, Menu, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import AuthButton from "../../components/auth/AuthButton";
 import { isAuthenticated } from "@/lib/auth";
+import { getUserPermissions } from "@/lib/api";
 import SearchOverlay from "../search/SearchOverlay";
 
 export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Check authentication status on mount and handle changes
+  // Check authentication status and admin permissions on mount and handle changes
   useEffect(() => {
-    setAuthenticated(isAuthenticated());
+    const checkAuthAndPermissions = async () => {
+      const authStatus = isAuthenticated();
+      setAuthenticated(authStatus);
+      
+      if (authStatus) {
+        try {
+          const permissions = await getUserPermissions();
+          setIsAdmin(permissions.isAdmin);
+        } catch (error) {
+          console.warn('Failed to get user permissions:', error);
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    };
+
+    checkAuthAndPermissions();
   }, []);
 
   // Handle CMD+K to open search
@@ -34,8 +53,20 @@ export default function Header() {
   }, [handleKeyDown]);
 
   // Handle authentication state changes without page reload
-  const handleAuthChange = (authStatus: boolean) => {
+  const handleAuthChange = async (authStatus: boolean) => {
     setAuthenticated(authStatus);
+    
+    if (authStatus) {
+      try {
+        const permissions = await getUserPermissions();
+        setIsAdmin(permissions.isAdmin);
+      } catch (error) {
+        console.warn('Failed to get user permissions:', error);
+        setIsAdmin(false);
+      }
+    } else {
+      setIsAdmin(false);
+    }
   };
 
   const closeMobileMenu = () => {
@@ -76,29 +107,36 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-4">
-            {authenticated ? (
-              <div className="flex items-center space-x-2">
-                <Link href="/add-project">
-                  <Button variant="outline" className="bg-white text-black border-black hover:bg-gray-100">
-                    Add Project
-                  </Button>
-                </Link>
-                <Link href="/settings">
-                  <Button variant="ghost" size="icon" className="text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <Settings className="w-5 h-5" />
-                    <span className="sr-only">Settings</span>
-                  </Button>
-                </Link>
-                <Link href="/curator">
-                  <Button variant="ghost" size="icon" className="text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <Shield className="w-5 h-5" />
-                    <span className="sr-only">Curator Dashboard</span>
-                  </Button>
-                </Link>
-              </div>
-            ) : null}
+            {authenticated && (
+              <Link href="/edit-app/new">
+                <Button variant="outline" className="bg-white text-black border-black hover:bg-gray-100">
+                  Add App
+                </Button>
+              </Link>
+            )}
             
-            <AuthButton onAuthChange={handleAuthChange} />
+            {/* Auth and Settings Group */}
+            <div className="flex items-center space-x-2">
+              <AuthButton onAuthChange={handleAuthChange} />
+              {authenticated && (
+                <>
+                  <Link href="/settings">
+                    <Button variant="ghost" size="icon" className="text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <Settings className="w-5 h-5" />
+                      <span className="sr-only">Settings</span>
+                    </Button>
+                  </Link>
+                  {isAdmin && (
+                    <Link href="/curator">
+                      <Button variant="ghost" size="icon" className="text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <Shield className="w-5 h-5" />
+                        <span className="sr-only">Curator Dashboard</span>
+                      </Button>
+                    </Link>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Mobile Navigation */}
@@ -136,11 +174,11 @@ export default function Header() {
               {authenticated ? (
                 <>
                   <Link 
-                    href="/add-project" 
+                    href="/edit-app/new" 
                     onClick={closeMobileMenu}
                     className="block w-full text-left py-2 text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white"
                   >
-                    Add Project
+                    Add App
                   </Link>
                   <Link 
                     href="/settings" 
@@ -149,13 +187,15 @@ export default function Header() {
                   >
                     Settings
                   </Link>
-                  <Link 
-                    href="/curator" 
-                    onClick={closeMobileMenu}
-                    className="block w-full text-left py-2 text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white"
-                  >
-                    Curator Dashboard
-                  </Link>
+                  {isAdmin && (
+                    <Link 
+                      href="/curator" 
+                      onClick={closeMobileMenu}
+                      className="block w-full text-left py-2 text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white"
+                    >
+                      Curator Dashboard
+                    </Link>
+                  )}
                   <div className="pt-2 border-t border-gray-200 dark:border-gray-800">
                     <AuthButton onAuthChange={handleAuthChange} />
                   </div>
