@@ -27,6 +27,7 @@ import StickyNav from "@/components/app/StickyNav";
 import { Section } from "@/components/ui/section";
 import { ProgressCircle } from "@/components/ui/progress-circle";
 import { RateDialog } from "@/components/app/RateDialog";
+import { useIsMobile } from "@/lib/feature-flags";
 
 interface ExtendedCategory extends Category {
   isCustom?: boolean;
@@ -64,6 +65,7 @@ export default function EditAppPage() {
   const [isLoadingApp, setIsLoadingApp] = useState(false);
   const [originalApp, setOriginalApp] = useState<Product | null>(null);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
+  const isMobile = useIsMobile();
   
   // AI assistance states
   const [aiLoading, setAiLoading] = useState({
@@ -610,6 +612,134 @@ Make it detailed, professional, and informative - suitable for developers, inves
     }
   };
 
+  // Preview Components
+  const PreviewLeftSidebar = (
+    <div className="w-full md:w-1/4 self-start space-y-6">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+        <h3 className="text-xl font-bold mb-4">App Links</h3>
+        <div className="space-y-2">
+          {previewData.website_url && (
+            <Button variant="outline" className="w-full justify-start gap-3" disabled>
+              <Globe size={16} />
+              Website
+            </Button>
+          )}
+          {previewData.docs_url && (
+            <Button variant="outline" className="w-full justify-start gap-3" disabled>
+              <FileText size={16} />
+              Docs
+            </Button>
+          )}
+          {previewData.github_url && (
+            <Button variant="outline" className="w-full justify-start gap-3" disabled>
+              <Github size={16} />
+              GitHub
+            </Button>
+          )}
+        </div>
+        <hr className="my-6 border-gray-200 dark:border-gray-700" />
+        <h3 className="text-xl font-bold mb-4">Community Scores</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col items-center">
+            <ProgressCircle value={(previewData.overall_score || 0) * 100} size={80} strokeWidth={8} />
+            <p className="text-sm mt-2 text-center">Overall</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <ProgressCircle value={(previewData.security_score || 0) * 100} size={80} strokeWidth={8} />
+            <p className="text-sm mt-2 text-center">Security</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <ProgressCircle value={(previewData.ux_score || 0) * 100} size={80} strokeWidth={8} />
+            <p className="text-sm mt-2 text-center">UX</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <ProgressCircle value={(previewData.vibes_score || 0) * 100} size={80} strokeWidth={8} />
+            <p className="text-sm mt-2 text-center">Vibes</p>
+          </div>
+        </div>
+        <hr className="my-6 border-gray-200 dark:border-gray-700" />
+        <Button variant="outline" className="w-full justify-start gap-3" disabled>
+          <Pencil size={16} />
+          Propose an Edit
+        </Button>
+      </div>
+    </div>
+  );
+
+  const PreviewMobileHeader = (
+    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+        <div className="flex justify-between items-start">
+            <Image
+                src={previewData.logo_url || '/placeholder-logos/opensea-logo.svg'}
+                alt={`${previewData.title} logo`}
+                width={80}
+                height={80}
+                className="rounded-lg"
+            />
+            <Button
+                variant="outline"
+                disabled
+                className={`h-auto flex flex-col items-center gap-1 rounded-lg transition-all px-6 py-2 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600`}
+            >
+                <ChevronUp className="w-5 h-5" />
+                <span className="text-base font-medium">0</span>
+            </Button>
+        </div>
+        <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{previewData.title}</h1>
+            <p className="text-md italic text-gray-600 dark:text-gray-300 mt-1">{previewData.short_desc}</p>
+        </div>
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed pt-2">{previewData.long_desc}</p>
+    </div>
+  );
+
+  const PreviewDesktopHeader = (
+    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 flex gap-8 items-start">
+      <div className="flex-shrink-0">
+        <Image
+          src={previewData.logo_url || '/placeholder-logos/opensea-logo.svg'}
+          alt={`${previewData.title} logo`}
+          width={128}
+          height={128}
+          className="rounded-lg"
+        />
+      </div>
+      <div className="flex-grow">
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">{previewData.title}</h1>
+        <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">{previewData.short_desc}</p>
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{previewData.long_desc}</p>
+      </div>
+      <div className="flex-shrink-0">
+        <Button
+          variant="outline"
+          disabled
+          className={`h-auto flex flex-col items-center gap-2 rounded-lg transition-all px-7 py-2 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600`}
+        >
+          <ChevronUp className="w-5 h-5" />
+          <span className="text-base font-medium">0</span>
+        </Button>
+      </div>
+    </div>
+  );
+
+  const PreviewMainContent = (
+    <>
+      {previewData.markdown_content && (
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8">
+          <Markdown content={previewData.markdown_content} />
+        </div>
+      )}
+      {previewData.analytics_list && previewData.analytics_list.length > 0 && (
+        <Section id="analytics">
+          <AnalyticsSection dashboards={previewData.analytics_list} />
+        </Section>
+      )}
+      <Section>
+        <MetaFooter product={previewData} />
+      </Section>
+    </>
+  );
+
   // Auto-save draft when form data changes
   useEffect(() => {
     if (mounted && (formData.title || formData.short_desc || formData.long_desc || formData.markdown_content)) {
@@ -744,9 +874,12 @@ Make it detailed, professional, and informative - suitable for developers, inves
               : `Update app information. All changes will be reviewed by staff before going live.`
             }
           </p>
+          <p className="text-sm text-gray-500 mt-2">
+            If you are a representative or creator of an app and want to become an admin for the project please contact <a href="https://x.com/wezabis" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-500">Wezabis</a> on X.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-12rem)]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:h-[calc(100vh-12rem)]">
           {/* Left Column - Form */}
           <div className="space-y-6 overflow-y-auto pr-2 lg:col-span-1">
             <Card>
@@ -1249,105 +1382,21 @@ Make it detailed, professional, and informative - suitable for developers, inves
                     </div>
                     <div className="border rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
                       <div className="max-h-[800px] overflow-y-auto p-4">
-                        <div className="flex flex-col md:flex-row gap-8">
-                          {/* Left Sticky Sidebar */}
-                          <div className="w-full md:w-1/4 self-start space-y-6">
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                              <h3 className="text-xl font-bold mb-4">App Links</h3>
-                              <div className="space-y-2">
-                                {previewData.website_url && (
-                                  <Button variant="outline" className="w-full justify-start gap-3" disabled>
-                                    <Globe size={16} />
-                                    Website
-                                  </Button>
-                                )}
-                                {previewData.docs_url && (
-                                  <Button variant="outline" className="w-full justify-start gap-3" disabled>
-                                    <FileText size={16} />
-                                    Docs
-                                  </Button>
-                                )}
-                                {previewData.github_url && (
-                                  <Button variant="outline" className="w-full justify-start gap-3" disabled>
-                                    <Github size={16} />
-                                    GitHub
-                                  </Button>
-                                )}
-                              </div>
-                              <hr className="my-6 border-gray-200 dark:border-gray-700" />
-                              <h3 className="text-xl font-bold mb-4">Community Scores</h3>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="flex flex-col items-center">
-                                  <ProgressCircle value={(previewData.overall_score || 0) * 20} size={80} strokeWidth={8} />
-                                  <p className="text-sm mt-2 text-center">Overall</p>
-                                </div>
-                                <div className="flex flex-col items-center">
-                                  <ProgressCircle value={(previewData.security_score || 0) * 20} size={80} strokeWidth={8} />
-                                  <p className="text-sm mt-2 text-center">Security</p>
-                                </div>
-                                <div className="flex flex-col items-center">
-                                  <ProgressCircle value={(previewData.ux_score || 0) * 20} size={80} strokeWidth={8} />
-                                  <p className="text-sm mt-2 text-center">UX</p>
-                                </div>
-                                <div className="flex flex-col items-center">
-                                  <ProgressCircle value={(previewData.vibes_score || 0) * 20} size={80} strokeWidth={8} />
-                                  <p className="text-sm mt-2 text-center">Vibes</p>
-                                </div>
-                              </div>
-                              <hr className="my-6 border-gray-200 dark:border-gray-700" />
-                              <Button variant="outline" className="w-full justify-start gap-3" disabled>
-                                <Pencil size={16} />
-                                Propose an Edit
-                              </Button>
+                        {isMobile ? (
+                          <div className="space-y-8">
+                            {PreviewMobileHeader}
+                            {PreviewLeftSidebar}
+                            <div className="space-y-8">{PreviewMainContent}</div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-row gap-8">
+                            {PreviewLeftSidebar}
+                            <div className="w-full md:w-3/4 space-y-8">
+                              {PreviewDesktopHeader}
+                              {PreviewMainContent}
                             </div>
                           </div>
-                          {/* Right Content */}
-                          <div className="w-full md:w-3/4 space-y-8">
-                            {/* Header Section */}
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 flex gap-8 items-start">
-                              <div className="flex-shrink-0">
-                                <Image
-                                  src={previewData.logo_url || '/placeholder-logos/opensea-logo.svg'}
-                                  alt={`${previewData.title} logo`}
-                                  width={128}
-                                  height={128}
-                                  className="rounded-lg"
-                                />
-                              </div>
-                              <div className="flex-grow">
-                                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">{previewData.title}</h1>
-                                <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">{previewData.short_desc}</p>
-                                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{previewData.long_desc}</p>
-                              </div>
-                              <div className="flex-shrink-0">
-                                <Button
-                                  variant="outline"
-                                  disabled
-                                  className={`h-auto flex flex-col items-center gap-2 rounded-lg transition-all px-7 py-2 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600`}
-                                >
-                                  <ChevronUp className="w-5 h-5" />
-                                  <span className="text-base font-medium">0</span>
-                                </Button>
-                              </div>
-                            </div>
-                            {/* Markdown Content */}
-                            {previewData.markdown_content && (
-                              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8">
-                                <Markdown content={previewData.markdown_content} />
-                              </div>
-                            )}
-                            {/* Analytics Section */}
-                            {previewData.analytics_list && previewData.analytics_list.length > 0 && (
-                              <Section id="analytics">
-                                <AnalyticsSection dashboards={previewData.analytics_list} />
-                              </Section>
-                            )}
-                            {/* Meta Footer */}
-                            <Section>
-                              <MetaFooter product={previewData} />
-                            </Section>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1372,129 +1421,21 @@ Make it detailed, professional, and informative - suitable for developers, inves
           </DialogHeader>
           <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 min-h-0">
             <div className="container max-w-7xl mx-auto px-4 py-8">
-              <div className="flex flex-col md:flex-row gap-8">
-                {/* Left Sticky Sidebar */}
-                <div className="w-full md:w-1/4 md:sticky top-24 self-start space-y-6">
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                    <h3 className="text-xl font-bold mb-4">App Links</h3>
-                    <div className="space-y-2">
-                      {previewData.website_url && (
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start gap-3"
-                          disabled
-                        >
-                          <Globe size={16} />
-                          Website
-                        </Button>
-                      )}
-                      {previewData.docs_url && (
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start gap-3"
-                          disabled
-                        >
-                          <FileText size={16} />
-                          Docs
-                        </Button>
-                      )}
-                      {previewData.github_url && (
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start gap-3"
-                          disabled
-                        >
-                          <Github size={16} />
-                          GitHub
-                        </Button>
-                      )}
-                    </div>
-
-                    <hr className="my-6 border-gray-200 dark:border-gray-700" />
-
-                    <h3 className="text-xl font-bold mb-4">Community Scores</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col items-center">
-                        <ProgressCircle value={(previewData.overall_score || 0) * 20} size={80} strokeWidth={8} />
-                        <p className="text-sm mt-2 text-center">Overall</p>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <ProgressCircle value={(previewData.security_score || 0) * 20} size={80} strokeWidth={8} />
-                        <p className="text-sm mt-2 text-center">Security</p>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <ProgressCircle value={(previewData.ux_score || 0) * 20} size={80} strokeWidth={8} />
-                        <p className="text-sm mt-2 text-center">UX</p>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <ProgressCircle value={(previewData.vibes_score || 0) * 20} size={80} strokeWidth={8} />
-                        <p className="text-sm mt-2 text-center">Vibes</p>
-                      </div>
-                    </div>
-
-                    <hr className="my-6 border-gray-200 dark:border-gray-700" />
-
-                    <Link href={`/edit-app/${previewData.id}`} passHref>
-                      <Button variant="outline" className="w-full justify-start gap-3">
-                        <Pencil size={16} />
-                        Propose an Edit
-                      </Button>
-                    </Link>
+              {isMobile ? (
+                <div className="space-y-8">
+                  {PreviewMobileHeader}
+                  {PreviewLeftSidebar}
+                  <div className="space-y-8">{PreviewMainContent}</div>
+                </div>
+              ) : (
+                <div className="flex flex-row gap-8">
+                  {PreviewLeftSidebar}
+                  <div className="w-full md:w-3/4 space-y-8">
+                    {PreviewDesktopHeader}
+                    {PreviewMainContent}
                   </div>
                 </div>
-
-                {/* Right Content */}
-                <div className="w-full md:w-3/4 space-y-8">
-                  {/* Header Section */}
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 flex gap-8 items-start">
-                    <div className="flex-shrink-0">
-                      <Image
-                        src={previewData.logo_url || '/placeholder-logos/opensea-logo.svg'}
-                        alt={`${previewData.title} logo`}
-                        width={128}
-                        height={128}
-                        className="rounded-lg"
-                      />
-                    </div>
-                    <div className="flex-grow">
-                      <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">{previewData.title}</h1>
-                      <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">{previewData.short_desc}</p>
-                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{previewData.long_desc}</p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      <Button
-                        variant="outline"
-                        disabled
-                        className={`h-auto flex flex-col items-center gap-2 rounded-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-800 px-7 py-2 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600`}
-                      >
-                        <ChevronUp
-                          className={`w-5 h-5`}
-                        />
-                        <span className="text-base font-medium">{previewData.upvote_count}</span>
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Markdown Content */}
-                  {previewData.markdown_content && (
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8">
-                      <Markdown content={previewData.markdown_content} />
-                    </div>
-                  )}
-
-                  {/* Analytics Section */}
-                  {previewData.analytics_list && previewData.analytics_list.length > 0 && (
-                    <Section id="analytics">
-                      <AnalyticsSection dashboards={previewData.analytics_list} />
-                    </Section>
-                  )}
-
-                  {/* Meta Footer */}
-                  <Section>
-                    <MetaFooter product={previewData} />
-                  </Section>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </DialogContent>
